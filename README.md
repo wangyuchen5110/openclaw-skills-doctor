@@ -8,6 +8,9 @@ block: roughly **97 characters plus name, description and location per skill,
 paid on every model step**. This tool measures that cost, tells you which
 definition actually wins, and can trim or hide the expensive ones.
 
+> **Runs 100% locally.** No telemetry, no account, no uploads — your skills,
+> configuration and files never leave your machine. See [Privacy](#privacy-local-only-no-data-collection).
+
 Three ways to use it: **CLI**, **MCP server**, or the **native OpenClaw plugin**
 (a `skills_doctor` tool + `/skills-doctor` command). All of them share the same
 audit core, so the numbers always match.
@@ -27,6 +30,24 @@ npx -y openclaw-skills-doctor check --html openclaw-report.html --open
 
 Nothing to configure: the wrapper resolves the state dir and workspace the same
 way OpenClaw does.
+
+## Privacy: local-only, no data collection
+
+Everything runs on your machine. No telemetry, no analytics, no account, and
+nothing is uploaded - not your skills, configuration or files.
+
+| | |
+|---|---|
+| **Reads** | `openclaw.json` (only to locate `mcp.servers` / `plugins.entries`) and the skill files it audits (`SKILL.md` plus the resources they reference) |
+| **Never reads** | chat history, sessions, transcripts, documents, source code, credentials or API keys |
+| **Uploads** | nothing: there is no server component, and the wrapper itself makes no network calls |
+| **Network** | none from the wrapper. The embedded core CLI (`skills-doctor`) may read the npm registry for a newer version once a day unless you disable it (`--no-update-check`, `SKILLS_DOCTOR_UPDATE_CHECK=0` or `"checkUpdates": "off"`) |
+| **Writes** | only on `install`/`uninstall` (MCP entry in `openclaw.json` with a backup, the bundled skill under `<workspace>/skills`, an optional plugin under `<state-dir>/extensions`), and the HTML/JSON report you ask for |
+
+`openclaw.json` can contain channel or provider credentials. It is parsed locally
+only to find the entries this tool owns; values are never transmitted, printed or
+copied into a report. Reports contain file paths and skill descriptions, never
+file bodies. `check`, `plan`, `scan` and `doctor` work with the network offline.
 
 ## What it audits
 
@@ -168,6 +189,7 @@ explicit `@id` reference while removing it from the model-facing list.
 
 ## Safety
 
+- **Local-only:** no telemetry, no backend, nothing leaves the machine; the only optional network call is the core CLI's daily npm version check, which you can disable.
 - `check`, `plan`, `scan` and `doctor` are read-only and offline (no network, no LLM).
 - `install`/`uninstall` back up `openclaw.json` before rewriting it; the CLI path
   leaves the file alone entirely.

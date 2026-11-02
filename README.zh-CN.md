@@ -19,6 +19,20 @@ npx -y openclaw-skills-doctor check --html openclaw-report.html --open
 
 无需配置：state 目录和 workspace 的解析规则与 OpenClaw 一致。
 
+## 隐私：纯本地运行，不收集数据
+
+全部在你自己的机器上运行。没有遥测、没有统计、不需要账号，也不会把你的 skill、配置或文件上传到任何地方。
+
+| | |
+|---|---|
+| **会读** | `openclaw.json`（只用来定位 `mcp.servers` / `plugins.entries`）以及被审计的 skill 文件（`SKILL.md` 及其引用的资源） |
+| **不会读** | 对话历史、会话、会话记录、文档、源代码、凭据、API key |
+| **不会上传** | 任何东西：没有服务端组件，封装层自身不发起任何网络请求 |
+| **联网** | 封装层不联网。内嵌的核心 CLI（`skills-doctor`）每天最多查一次 npm registry 的最新版本号；可用 `--no-update-check`、`SKILLS_DOCTOR_UPDATE_CHECK=0` 或 `"checkUpdates": "off"` 关闭 |
+| **会写** | 只在 `install`/`uninstall` 时写：`openclaw.json` 里的 MCP 条目（先备份）、`<workspace>/skills` 下的随包 skill、可选的 `<state-dir>/extensions` 插件；以及你主动要的 HTML/JSON 报告 |
+
+`openclaw.json` 里可能有渠道/模型提供商的凭据；它只在本地被解析用来定位本工具自己的条目，值不会被传输、打印或写进报告。报告只含文件路径和 skill 描述，不含文件正文。`check`、`plan`、`scan`、`doctor` 都可以在断网环境运行。
+
 ## 审计范围
 
 OpenClaw 文件型 skill 根目录，优先级从高到低：
@@ -121,6 +135,7 @@ npx -y openclaw-skills-doctor fix --hide legacy-skill
 
 ## 安全
 
+- **纯本地**：无遥测、无后端，数据不出机器；唯一可选的联网是核心 CLI 每天一次的 npm 版本检查，可关闭。
 - `check` / `plan` / `scan` / `doctor` 只读、离线（不联网、不调模型）。
 - `install` / `uninstall` 改 `openclaw.json` 前先备份；走 CLI 时根本不碰文件。
 - `uninstall` 只删 `SKILL.md` 里仍声明 `name: openclaw-skills-doctor` 的随包 skill，以及它认得的插件目录。

@@ -8,6 +8,9 @@
   `openclaw.extensions` entry, and the `api.registerTool` / `api.registerCommand`
   bindings. It runs without an OpenClaw install, so manifest drift fails in CI
   even though the runtime API is experimental.
+- Docs: privacy statement in both READMEs - runs 100% locally, no telemetry, does
+  not read chats/sessions/credentials, uploads nothing; the wrapper itself makes
+  no network calls.
 
 ## 0.3.0
 
