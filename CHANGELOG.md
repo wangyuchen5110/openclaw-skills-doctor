@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1
+
+- `scripts/validate-plugin.mjs` (+ `npm run plugin:validate`, wired into CI and
+  `prepublishOnly`): offline consistency check for the packed plugin metadata -
+  manifest id, `contracts.tools`, `activation`, `configSchema`, the
+  `openclaw.extensions` entry, and the `api.registerTool` / `api.registerCommand`
+  bindings. It runs without an OpenClaw install, so manifest drift fails in CI
+  even though the runtime API is experimental.
+
 ## 0.3.0
 
 - Native OpenClaw plugin: `openclaw.plugin.json` + `src/openclaw-plugin.mjs`

@@ -183,7 +183,8 @@ explicit `@id` reference while removing it from the model-facing list.
 
 ```powershell
 npm install
-npm test        # 27 tests
+npm test                  # 27 tests
+npm run plugin:validate   # offline manifest/entry/metadata consistency
 ```
 
 Requires Node >= 20. MIT.

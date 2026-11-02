@@ -1,6 +1,6 @@
 {
   "name": "openclaw-skills-doctor",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Audit the skills OpenClaw loads: per-step token cost, shadowed duplicates, broken references. CLI + MCP server + native plugin + a bundled skill.",
   "type": "module",
   "bin": {
@@ -23,6 +23,7 @@
   "files": [
     "bin",
     "src",
+    "scripts",
     "skills",
     "openclaw.plugin.json",
     "README.md",
@@ -35,7 +36,8 @@
   },
   "scripts": {
     "test": "node test/openclaw.test.mjs",
-    "prepublishOnly": "node test/openclaw.test.mjs"
+    "plugin:validate": "node scripts/validate-plugin.mjs",
+    "prepublishOnly": "node test/openclaw.test.mjs && node scripts/validate-plugin.mjs"
   },
   "dependencies": {
     "opencode-skills-doctor": "^0.8.1"
