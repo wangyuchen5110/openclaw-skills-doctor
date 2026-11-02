@@ -14,6 +14,8 @@
 - Docs: landing-page refresh - custom SVG banner, centered hero with `for-the-badge`
   shields (including local-only/no-telemetry/no-user-data), contents list, Mermaid
   pipeline diagram, and a real `doctor` example output; the Chinese page mirrors it.
+- Published on npm: `openclaw-skills-doctor@0.3.1` (first release since the 0.1.0
+  wrapper), so `npx -y openclaw-skills-doctor@latest <command>` now runs this code.
 
 ## 0.3.0
 

@@ -55,5 +55,9 @@
     "type": "git",
     "url": "https://github.com/wangyuchen5110/openclaw-skills-doctor.git"
   },
+  "homepage": "https://github.com/wangyuchen5110/openclaw-skills-doctor#readme",
+  "bugs": {
+    "url": "https://github.com/wangyuchen5110/openclaw-skills-doctor/issues"
+  },
   "license": "MIT"
 }
