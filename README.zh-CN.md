@@ -1,0 +1,105 @@
+# openclaw-skills-doctor
+
+审计 **OpenClaw** 实际加载的 skills：每步 token 开销、被遮蔽的重复定义、断链引用、预算超标 —— 并给出可量化的精简方案。
+
+OpenClaw 会把每个可用 skill 压成一段紧凑 XML 注入系统提示词：大约 **每个 skill 97 字符 + name/description/location 的长度，而且每个模型步骤都要付一次**。这个工具测量这笔开销、指出同一名字到底哪个定义生效，并能裁剪或隐藏昂贵的那些。
+
+它是 [`opencode-skills-doctor`](https://github.com/wangyuchen5110/opencodeplugginprogram) 的一个聚焦封装，额外理解 OpenClaw 的 skill 根目录、优先级、`openclaw.json`、MCP 注册表和随包 skill。
+
+## 快速开始
+
+```powershell
+npx -y openclaw-skills-doctor check          # 体检 + 每步 token 开销
+npx -y openclaw-skills-doctor plan           # 精确节省：裁剪/隐藏多少
+npx -y openclaw-skills-doctor doctor         # 路径、根目录、安装状态
+npx -y openclaw-skills-doctor check --html openclaw-report.html --open
+```
+
+无需配置：state 目录和 workspace 的解析规则与 OpenClaw 一致。
+
+## 审计范围
+
+OpenClaw 文件型 skill 根目录，优先级从高到低：
+
+| 优先级 | 来源 | 路径 |
+| --- | --- | --- |
+| 1 | 工作区 skills | `<workspace>/skills` |
+| 2 | 项目 agent skills | `<workspace>/.agents/skills` |
+| 3 | 个人 agent skills | `~/.agents/skills`（仅默认 state 目录） |
+| 4 | 托管 / 本地 skills | `<state-dir>/skills` |
+| 5+ | 额外目录 | `openclaw.json` 里的 `skills.load.extraDirs` |
+
+封装层按这个顺序把目录交给核心审计器，所以遮蔽报告里的「生效版本」与 OpenClaw 运行时一致。默认不扫描其它 agent 的全局根目录（Claude / OpenCode / Grok / Cursor / Kimi / Hermes），需要时加 `--include-other-agents`。
+
+## 安装集成
+
+```powershell
+npx -y openclaw-skills-doctor install
+```
+
+做两件事，且幂等：
+
+1. 在 `~/.openclaw/openclaw.json` 写入 `mcp.servers.skills-doctor` —— 有 `openclaw` CLI 时走 `openclaw mcp add`，否则直接改配置并把原文件备份成 `openclaw.json.bak-<时间戳>`；
+2. 把随包 skill 安装到 `<workspace>/skills/openclaw-skills-doctor`。
+
+```powershell
+npx -y openclaw-skills-doctor install --dry-run   # 只预览
+npx -y openclaw-skills-doctor uninstall           # 撤销
+openclaw mcp doctor skills-doctor --probe         # 验证 MCP 能连上
+```
+
+改完重启 Gateway（或 `openclaw mcp reload`）工具才会出现。MCP 工具按服务器加前缀，agent 里调用 `skills-doctor__skills_doctor`。
+
+## 路径解析
+
+| 项目 | 优先级 |
+| --- | --- |
+| state 目录 | `OPENCLAW_STATE_DIR` > `OPENCLAW_PROFILE`（`~/.openclaw-<profile>`）> `~/.openclaw` |
+| 配置文件 | `<state-dir>/openclaw.json` |
+| workspace | `OPENCLAW_WORKSPACE_DIR` > `agents.entries.main.workspace` > `agents.defaults.workspace` > `<state-dir>/workspace` |
+
+可用 `--state-dir <dir>`、`--workspace <dir>`、`--home <dir>` 覆盖。
+
+## 命令
+
+| 命令 | 作用 |
+| --- | --- |
+| `check` | 审计来源、遮蔽、token 预算、断链（默认命令） |
+| `plan` | 精确节省：裁剪哪些描述、隐藏哪些 skill |
+| `scan` | 列出每个 skill 的来源、优先级、成本 |
+| `fix` | 归档被遮蔽定义（可逆）或隐藏低频 skill |
+| `install` / `uninstall` | MCP 条目 + 随包 skill，幂等 |
+| `doctor` | CLI、state、配置、workspace、根目录、安装状态 |
+| `mcp` | 以 stdio 方式运行 MCP server |
+
+核心参数照常可用：`--json`、`--budget`、`--lang en|zh`、`--dry-run`、`--strict`、`--html [file]`、`--no-global`。
+
+## 修复
+
+```powershell
+npx -y openclaw-skills-doctor plan             # 先量化
+npx -y openclaw-skills-doctor fix --dry-run    # 预览会归档什么
+npx -y openclaw-skills-doctor fix              # 归档被遮蔽定义（可逆）
+npx -y openclaw-skills-doctor fix --hide legacy-skill
+```
+
+`fix` 只归档永远不会生效的定义，移到同目录下的 `.skills-doctor-archive/<时间戳>/`。`--hide` 会写 `metadata.opencode/autoinvoke: false`：从模型可见列表移除，但仍可用 `@id` 显式加载。
+
+## 安全
+
+- `check` / `plan` / `scan` / `doctor` 只读、离线（不联网、不调模型）。
+- `install` / `uninstall` 改 `openclaw.json` 前先备份；走 CLI 时根本不碰文件。
+- `uninstall` 只删 `SKILL.md` 里仍声明 `name: openclaw-skills-doctor` 的随包 skill。
+- 配置解析支持注释和尾逗号；遇到其它 JSON5 专有语法（无引号 key、单引号）只报告不重写 —— 这种情况请用 `openclaw mcp add/set/unset`。
+- 它不是沙箱：只审计配置和文件，不限制 agent 能做什么。
+
+## 开发
+
+```powershell
+npm install
+npm test        # 19 个测试
+```
+
+需要 Node >= 20。MIT。
+
+[变更记录](CHANGELOG.md) · [English](README.md) · [核心参考](https://github.com/wangyuchen5110/opencodeplugginprogram/blob/main/docs/REFERENCE.md)

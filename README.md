@@ -1,72 +1,156 @@
 # openclaw-skills-doctor
 
-Audit **OpenClaw** skills: the per-step token tax, shadowed duplicates, broken references and budget overruns — then get a concrete plan to fix them.
+Audit the skills **OpenClaw** loads: the per-step token tax, shadowed duplicates,
+broken references and budget overruns - then get a measured plan to fix them.
 
-A thin wrapper around [`opencode-skills-doctor`](https://github.com/wangyuchen5110/opencodeplugginprogram) that adds OpenClaw's skill roots and the OpenClaw MCP setup.
+OpenClaw injects every eligible skill into the system prompt as a compact XML
+block: roughly **97 characters plus name, description and location per skill,
+paid on every model step**. This tool measures that cost, tells you which
+definition actually wins, and can trim or hide the expensive ones.
+
+A thin, focused wrapper around [`opencode-skills-doctor`](https://github.com/wangyuchen5110/opencodeplugginprogram)
+that knows OpenClaw's skill roots, precedence, `openclaw.json`, its MCP registry
+and the bundled skill.
 
 ## Quick start
 
 ```powershell
-npx -y openclaw-skills-doctor check
-npx -y openclaw-skills-doctor plan
+npx -y openclaw-skills-doctor check          # findings + per-step token cost
+npx -y openclaw-skills-doctor plan           # exact savings: trim and/or hide
+npx -y openclaw-skills-doctor doctor         # paths, roots, install state
 npx -y openclaw-skills-doctor check --html openclaw-report.html --open
 ```
 
-It scans, highest precedence first:
+Nothing to configure: the wrapper resolves the state dir and workspace the same
+way OpenClaw does.
 
-- `<workspace>/skills`
-- `<workspace>/.agents/skills`
-- `~/.agents/skills`
-- `$OPENCLAW_STATE_DIR/skills` (default `~/.openclaw/skills`)
+## What it audits
 
-All other `skills-doctor` flags work too (`--budget`, `--json`, `--lang`, `--strict`, `--root`).
+OpenClaw file-backed skill roots, highest precedence first:
 
-## Add the MCP tool to OpenClaw
+| Priority | Source | Path |
+| --- | --- | --- |
+| 1 | Workspace skills | `<workspace>/skills` |
+| 2 | Project agent skills | `<workspace>/.agents/skills` |
+| 3 | Personal agent skills | `~/.agents/skills` (default state dir only) |
+| 4 | Managed / local skills | `<state-dir>/skills` |
+| 5+ | Extra dirs | `skills.load.extraDirs` in `openclaw.json` |
+
+The wrapper hands those roots to the core auditor in exactly this order, so the
+winning definition in a shadowing report matches what OpenClaw actually loads.
+Other agents' global roots (Claude, OpenCode, Grok, Cursor, Kimi, Hermes) are
+skipped by default; pass `--include-other-agents` to audit them too.
+
+## Install the integration
 
 ```powershell
 npx -y openclaw-skills-doctor install
 ```
 
-prints the two supported forms; the CLI one is:
+That does two things and is idempotent:
 
-```bash
-openclaw mcp add skills-doctor --command npx --arg -y --arg opencode-skills-doctor --arg mcp
-openclaw mcp doctor skills-doctor --probe
+1. saves the MCP server definition `mcp.servers.skills-doctor` in
+   `~/.openclaw/openclaw.json` - through `openclaw mcp add` when the CLI is
+   installed, otherwise by patching the config directly (the previous file is
+   backed up as `openclaw.json.bak-<timestamp>`);
+2. installs the bundled `openclaw-skills-doctor` skill into
+   `<workspace>/skills/openclaw-skills-doctor`.
+
+```powershell
+npx -y openclaw-skills-doctor install --dry-run   # show what would change
+npx -y openclaw-skills-doctor uninstall           # remove both again
+openclaw mcp doctor skills-doctor --probe         # verify the server connects
 ```
 
-OpenClaw namespaces MCP tools as `<server>__<tool>`, so the agent calls `skills-doctor__skills_doctor`.
+Restart the Gateway (or run `openclaw mcp reload`) so the tool appears. MCP tools
+are namespaced per server, so the agent calls `skills-doctor__skills_doctor`.
 
-Or write it directly in `~/.openclaw/openclaw.json`:
+### Manual MCP setup
 
-```json
+If you prefer to wire it yourself:
+
+```bash
+openclaw mcp add skills-doctor \
+  --command npx \
+  --arg -y \
+  --arg opencode-skills-doctor \
+  --arg mcp
+```
+
+or in `~/.openclaw/openclaw.json`:
+
+```json5
 {
-  "mcp": {
-    "servers": {
+  mcp: {
+    servers: {
       "skills-doctor": {
-        "command": "npx",
-        "args": ["-y", "opencode-skills-doctor", "mcp"]
-      }
-    }
-  }
+        command: "npx",
+        args: ["-y", "opencode-skills-doctor", "mcp"],
+      },
+    },
+  },
 }
 ```
 
-## What you get
+## Paths it resolves
 
-| | |
-|---|---|
-| `check` | token budget, duplicates/shadowing, long descriptions, broken references, invalid frontmatter |
-| `plan` | exact savings: trim descriptions and/or hide skills, projected over N steps |
-| `fix` | archive shadowed definitions (reversible) or hide low-frequency skills |
-| `--html` | self-contained HTML report |
+| What | Resolution order |
+| --- | --- |
+| State dir | `OPENCLAW_STATE_DIR` > `OPENCLAW_PROFILE` (`~/.openclaw-<profile>`) > `~/.openclaw` |
+| Config | `<state-dir>/openclaw.json` |
+| Workspace | `OPENCLAW_WORKSPACE_DIR` > `agents.entries.main.workspace` > `agents.defaults.workspace` > `<state-dir>/workspace` |
 
-Full rules, configuration and MCP details live in the [core reference](https://github.com/wangyuchen5110/opencodeplugginprogram/blob/main/docs/REFERENCE.md).
+Override any of them with `--state-dir <dir>`, `--workspace <dir>`, `--home <dir>`.
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `check` | audit sources, shadowing, token budget and broken references (default) |
+| `plan` | exact savings: which descriptions to trim, which skills to hide |
+| `scan` | every skill with its source, precedence and cost |
+| `fix` | archive shadowed duplicates (reversible) or hide low-frequency skills |
+| `install` / `uninstall` | MCP server entry + bundled skill, idempotent |
+| `doctor` | CLI, state dir, config, workspace, roots and install state |
+| `mcp` | run the MCP server on stdio |
+
+Core flags work as usual: `--json`, `--budget`, `--lang en|zh`, `--dry-run`,
+`--strict`, `--html [file]`, `--no-global`.
+
+## Fixing what it finds
+
+```powershell
+npx -y openclaw-skills-doctor plan             # measure first
+npx -y openclaw-skills-doctor fix --dry-run    # see what would be archived
+npx -y openclaw-skills-doctor fix              # archive shadowed duplicates (reversible)
+npx -y openclaw-skills-doctor fix --hide legacy-skill
+```
+
+`fix` only archives definitions that never load, moving them to
+`.skills-doctor-archive/<timestamp>/` inside the same skill root. `--hide` adds
+`metadata.opencode/autoinvoke: false`, which keeps the skill loadable through an
+explicit `@id` reference while removing it from the model-facing list.
+
+## Safety
+
+- `check`, `plan`, `scan` and `doctor` are read-only and offline (no network, no LLM).
+- `install`/`uninstall` back up `openclaw.json` before rewriting it; the CLI path
+  leaves the file alone entirely.
+- `uninstall` only removes a bundled skill whose `SKILL.md` still declares
+  `name: openclaw-skills-doctor`.
+- Config parsing understands JSON with comments and trailing commas. A file that
+  uses other JSON5-only syntax (unquoted keys, single quotes) is reported, never
+  rewritten - use `openclaw mcp add/set/unset` there instead.
+- It is not a sandbox: it audits configuration and files, it does not constrain
+  what the agent can do.
 
 ## Development
 
 ```powershell
 npm install
-npm test
+npm test        # 19 tests
 ```
 
-Requires Node ≥ 20. MIT.
+Requires Node >= 20. MIT.
+
+[Changelog](CHANGELOG.md) · [中文说明](README.zh-CN.md) · [Core reference](https://github.com/wangyuchen5110/opencodeplugginprogram/blob/main/docs/REFERENCE.md)
