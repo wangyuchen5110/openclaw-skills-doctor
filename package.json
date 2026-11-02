@@ -1,0 +1,41 @@
+{
+  "name": "openclaw-skills-doctor",
+  "version": "0.1.0",
+  "description": "Audit OpenClaw skills: per-step token cost, duplicates, broken references and shadowing — powered by skills-doctor.",
+  "type": "module",
+  "bin": {
+    "openclaw-skills-doctor": "./bin/openclaw-skills-doctor.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node test/openclaw.test.mjs",
+    "prepublishOnly": "node test/openclaw.test.mjs"
+  },
+  "dependencies": {
+    "opencode-skills-doctor": "^0.8.1"
+  },
+  "keywords": [
+    "openclaw",
+    "skills",
+    "agent-skills",
+    "mcp",
+    "audit",
+    "tokens"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wangyuchen5110/openclaw-skills-doctor.git"
+  },
+  "license": "MIT"
+}
