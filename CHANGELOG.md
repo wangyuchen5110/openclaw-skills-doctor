@@ -11,6 +11,9 @@
 - Docs: privacy statement in both READMEs - runs 100% locally, no telemetry, does
   not read chats/sessions/credentials, uploads nothing; the wrapper itself makes
   no network calls.
+- Docs: landing-page refresh - custom SVG banner, centered hero with `for-the-badge`
+  shields (including local-only/no-telemetry/no-user-data), contents list, Mermaid
+  pipeline diagram, and a real `doctor` example output; the Chinese page mirrors it.
 
 ## 0.3.0
 
