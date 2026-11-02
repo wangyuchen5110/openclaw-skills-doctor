@@ -5,7 +5,7 @@ import { openclawHome, workspaceDir, openclawSkillDirs, existingSkillDirs, expan
 import { loadConfig } from "./config.mjs"
 
 export { openclawHome, workspaceDir, openclawSkillDirs, existingSkillDirs, expandHome }
-export { MCP_SERVER_NAME, SKILL_NAME, configFile, bundledSkillDir, configuredExtraDirs } from "./paths.mjs"
+export { MCP_SERVER_NAME, SKILL_NAME, PLUGIN_ID, configFile, bundledSkillDir, bundledPluginDir, extensionsDir, configuredExtraDirs } from "./paths.mjs"
 export {
   MCP_ENTRY,
   stripJsonc,
@@ -16,16 +16,21 @@ export {
   getMcpServer,
   setMcpServer,
   removeMcpServer,
+  getPluginEntry,
+  setPluginEnabled,
+  removePluginEntry,
 } from "./config.mjs"
 export {
   findExecutable,
   detectCli,
   runCommand,
+  packageRoot,
   bundledSkillSource,
   installOpenClaw,
   uninstallOpenClaw,
   inspectOpenClaw,
 } from "./install.mjs"
+export { TOOL_NAME, COMMAND_NAME, renderCompact, summarizeForTool, runSkillsDoctor } from "./tool.mjs"
 
 /**
  * Audit every skill root OpenClaw reads, with OpenClaw's precedence.

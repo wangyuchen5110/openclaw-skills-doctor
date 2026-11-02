@@ -1,7 +1,7 @@
 {
   "name": "openclaw-skills-doctor",
-  "version": "0.2.0",
-  "description": "Audit the skills OpenClaw loads: per-step token cost, shadowed duplicates, broken references. CLI + MCP server + a bundled OpenClaw skill.",
+  "version": "0.3.0",
+  "description": "Audit the skills OpenClaw loads: per-step token cost, shadowed duplicates, broken references. CLI + MCP server + native plugin + a bundled skill.",
   "type": "module",
   "bin": {
     "openclaw-skills-doctor": "./bin/openclaw-skills-doctor.mjs"
@@ -10,12 +10,21 @@
     ".": "./src/index.mjs",
     "./paths": "./src/paths.mjs",
     "./config": "./src/config.mjs",
-    "./install": "./src/install.mjs"
+    "./install": "./src/install.mjs",
+    "./tool": "./src/tool.mjs"
+  },
+  "openclaw": {
+    "extensions": ["./src/openclaw-plugin.mjs"],
+    "plugin": {
+      "id": "openclaw-skills-doctor",
+      "label": "OpenClaw Skills Doctor"
+    }
   },
   "files": [
     "bin",
     "src",
     "skills",
+    "openclaw.plugin.json",
     "README.md",
     "README.zh-CN.md",
     "CHANGELOG.md",

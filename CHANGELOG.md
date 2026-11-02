@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0
+
+- Native OpenClaw plugin: `openclaw.plugin.json` + `src/openclaw-plugin.mjs`
+  register the `skills_doctor` tool and a `/skills-doctor` command. Plain
+  JavaScript, no build step, no TypeBox dependency. `install --plugin` copies the
+  package into `<state-dir>/extensions/openclaw-skills-doctor` and enables it in
+  `plugins.entries`; `uninstall --plugin` reverses both.
+- Compact tool output: the plugin (and the new `src/tool.mjs` API) returns the
+  budget line plus the top findings instead of the full markdown, so the tool
+  result stays cheap. The full report is still available on the CLI.
+- Install robustness: a successful `openclaw mcp add/set` is verified against
+  `openclaw.json` and falls back to a direct config patch when nothing was
+  persisted (wrong profile, refused write while the Gateway owns the state dir).
+  An existing but different entry is updated with `openclaw mcp set` instead of
+  being re-added.
+- Granular installs: `--mcp-only` and `--skill-only`; `doctor` now reports the
+  native plugin directory and enablement.
+- Tests: 27.
+
 ## 0.2.0
 
 - Real OpenClaw integration. `install` now saves `mcp.servers["skills-doctor"]` in

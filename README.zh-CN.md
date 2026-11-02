@@ -4,7 +4,9 @@
 
 OpenClaw 会把每个可用 skill 压成一段紧凑 XML 注入系统提示词：大约 **每个 skill 97 字符 + name/description/location 的长度，而且每个模型步骤都要付一次**。这个工具测量这笔开销、指出同一名字到底哪个定义生效，并能裁剪或隐藏昂贵的那些。
 
-它是 [`opencode-skills-doctor`](https://github.com/wangyuchen5110/opencodeplugginprogram) 的一个聚焦封装，额外理解 OpenClaw 的 skill 根目录、优先级、`openclaw.json`、MCP 注册表和随包 skill。
+三种用法：**CLI**、**MCP server**、**原生 OpenClaw 插件**（`skills_doctor` 工具 + `/skills-doctor` 命令）。三者共用同一套审计核心，数字一致。
+
+它是 [`opencode-skills-doctor`](https://github.com/wangyuchen5110/opencodeplugginprogram) 的一个聚焦封装，额外理解 OpenClaw 的 skill 根目录、优先级、`openclaw.json`、MCP 注册表和插件 API。
 
 ## 快速开始
 
@@ -39,16 +41,48 @@ npx -y openclaw-skills-doctor install
 
 做两件事，且幂等：
 
-1. 在 `~/.openclaw/openclaw.json` 写入 `mcp.servers.skills-doctor` —— 有 `openclaw` CLI 时走 `openclaw mcp add`，否则直接改配置并把原文件备份成 `openclaw.json.bak-<时间戳>`；
+1. 在 `~/.openclaw/openclaw.json` 写入 `mcp.servers.skills-doctor` —— 有 `openclaw` CLI 时走 `openclaw mcp add`（条目已存在但不同则走 `mcp set`），否则直接改配置并把原文件备份成 `openclaw.json.bak-<时间戳>`。CLI 写完后会回读配置校验，没写进去就自动回退到直接改配置；
 2. 把随包 skill 安装到 `<workspace>/skills/openclaw-skills-doctor`。
 
 ```powershell
-npx -y openclaw-skills-doctor install --dry-run   # 只预览
-npx -y openclaw-skills-doctor uninstall           # 撤销
-openclaw mcp doctor skills-doctor --probe         # 验证 MCP 能连上
+npx -y openclaw-skills-doctor install --mcp-only     # 只写 MCP 条目
+npx -y openclaw-skills-doctor install --skill-only   # 只装随包 skill
+npx -y openclaw-skills-doctor install --plugin       # 同时装原生插件
+npx -y openclaw-skills-doctor install --dry-run      # 只预览
+npx -y openclaw-skills-doctor uninstall              # 撤销
+openclaw mcp doctor skills-doctor --probe            # 验证 MCP 能连上
 ```
 
 改完重启 Gateway（或 `openclaw mcp reload`）工具才会出现。MCP 工具按服务器加前缀，agent 里调用 `skills-doctor__skills_doctor`。
+
+## 原生插件（可选）
+
+`install --plugin` 会把包复制到 `<state-dir>/extensions/openclaw-skills-doctor`，并在配置里设 `plugins.entries["openclaw-skills-doctor"].enabled = true`。插件提供：
+
+- `skills_doctor` 工具：返回**精简报告**（预算行 + top findings + 下一步），而不是完整 markdown —— 工具结果同样要占模型上下文；
+- `/skills-doctor` 命令：直接打印同样的报告。
+
+```powershell
+openclaw plugins inspect openclaw-skills-doctor --runtime --json  # 验证加载
+```
+
+正式使用建议走受管安装：
+
+```bash
+openclaw plugins install ./openclaw-skills-doctor
+```
+
+插件 API 目前是 **experimental**：固定 OpenClaw 版本，升级后用 `openclaw plugins inspect ... --runtime` 复核。本仓库是纯 JavaScript、无构建步骤（不依赖 TypeScript / TypeBox），插件入口就是测试覆盖的同一份代码。
+
+### 手动配置 MCP
+
+```bash
+openclaw mcp add skills-doctor \
+  --command npx \
+  --arg -y \
+  --arg opencode-skills-doctor \
+  --arg mcp
+```
 
 ## 路径解析
 
@@ -68,8 +102,8 @@ openclaw mcp doctor skills-doctor --probe         # 验证 MCP 能连上
 | `plan` | 精确节省：裁剪哪些描述、隐藏哪些 skill |
 | `scan` | 列出每个 skill 的来源、优先级、成本 |
 | `fix` | 归档被遮蔽定义（可逆）或隐藏低频 skill |
-| `install` / `uninstall` | MCP 条目 + 随包 skill，幂等 |
-| `doctor` | CLI、state、配置、workspace、根目录、安装状态 |
+| `install` / `uninstall` | MCP 条目 + 随包 skill（+ 可选原生插件），幂等 |
+| `doctor` | CLI、state、配置、workspace、根目录、MCP/skill/插件安装状态 |
 | `mcp` | 以 stdio 方式运行 MCP server |
 
 核心参数照常可用：`--json`、`--budget`、`--lang en|zh`、`--dry-run`、`--strict`、`--html [file]`、`--no-global`。
@@ -89,7 +123,7 @@ npx -y openclaw-skills-doctor fix --hide legacy-skill
 
 - `check` / `plan` / `scan` / `doctor` 只读、离线（不联网、不调模型）。
 - `install` / `uninstall` 改 `openclaw.json` 前先备份；走 CLI 时根本不碰文件。
-- `uninstall` 只删 `SKILL.md` 里仍声明 `name: openclaw-skills-doctor` 的随包 skill。
+- `uninstall` 只删 `SKILL.md` 里仍声明 `name: openclaw-skills-doctor` 的随包 skill，以及它认得的插件目录。
 - 配置解析支持注释和尾逗号；遇到其它 JSON5 专有语法（无引号 key、单引号）只报告不重写 —— 这种情况请用 `openclaw mcp add/set/unset`。
 - 它不是沙箱：只审计配置和文件，不限制 agent 能做什么。
 
@@ -97,7 +131,7 @@ npx -y openclaw-skills-doctor fix --hide legacy-skill
 
 ```powershell
 npm install
-npm test        # 19 个测试
+npm test        # 27 个测试
 ```
 
 需要 Node >= 20。MIT。

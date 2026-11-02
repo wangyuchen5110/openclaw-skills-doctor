@@ -39,6 +39,9 @@ Wrapper options (all commands):
 Install options:
   --dry-run                report the actions without writing anything
   --force                  replace an existing bundled skill instead of updating it
+  --mcp-only               only save the MCP server entry
+  --skill-only             only install the bundled skill
+  --plugin                 also install the native OpenClaw plugin into <state-dir>/extensions
   --json                   machine-readable result
 
 Everything else is forwarded to skills-doctor, e.g.
@@ -47,7 +50,17 @@ Everything else is forwarded to skills-doctor, e.g.
 `
 
 function parseOwnArgs(args) {
-  const options = { dryRun: false, json: false, force: false, home: undefined, stateDir: undefined, workspace: undefined }
+  const options = {
+    dryRun: false,
+    json: false,
+    force: false,
+    plugin: false,
+    mcpOnly: false,
+    skillOnly: false,
+    home: undefined,
+    stateDir: undefined,
+    workspace: undefined,
+  }
   for (let i = 1; i < args.length; i++) {
     const arg = args[i]
     switch (arg) {
@@ -59,6 +72,15 @@ function parseOwnArgs(args) {
         break
       case "--force":
         options.force = true
+        break
+      case "--plugin":
+        options.plugin = true
+        break
+      case "--mcp-only":
+        options.mcpOnly = true
+        break
+      case "--skill-only":
+        options.skillOnly = true
         break
       case "--home":
         options.home = path.resolve(args[++i] ?? ".")
@@ -101,6 +123,8 @@ function printResult(result) {
     console.log("")
     console.log(`  mcp entry:  ${data.mcpEntry ? "saved" : "missing"}`)
     console.log(`  bundled skill: ${data.skillInstalled ? "installed" : "missing"}`)
+    console.log(`  native plugin: ${data.pluginInstalled ? (data.pluginEnabled ? "installed + enabled" : "installed, disabled") : "missing"}`)
+    if (data.pluginDir) console.log(`  plugin dir: ${data.pluginDir}`)
     return
   }
   for (const action of data.actions ?? []) console.log(`  · ${action}`)
@@ -163,6 +187,9 @@ async function main() {
       workspace: options.workspace,
       dryRun: options.dryRun,
       force: options.force,
+      plugin: options.plugin,
+      mcp: !options.skillOnly,
+      skill: !options.mcpOnly,
     })
     printResult({ json: options.json, data: result })
     if (result.errors.length) process.exitCode = 1

@@ -5,6 +5,7 @@ import os from "node:os"
 export const CONFIG_NAME = "openclaw.json"
 export const MCP_SERVER_NAME = "skills-doctor"
 export const SKILL_NAME = "openclaw-skills-doctor"
+export const PLUGIN_ID = "openclaw-skills-doctor"
 
 /** Expand a leading `~` the same way OpenClaw does for config paths. */
 export function expandHome(value, home = os.homedir()) {
@@ -123,4 +124,14 @@ export function existingSkillDirs(options) {
 /** Workspace skill folder for the bundled skill. */
 export function bundledSkillDir({ workspace, stateDir, config, home = os.homedir() } = {}) {
   return path.join(workspace ?? workspaceDir({ home, stateDir, config }), "skills", SKILL_NAME)
+}
+
+/** Native plugin discovery root (`<state-dir>/extensions`, see docs.openclaw.ai/gateway/config-extensions). */
+export function extensionsDir({ stateDir, home = os.homedir() } = {}) {
+  return path.join(stateDir ?? openclawHome({ home }), "extensions")
+}
+
+/** Install target for the bundled native plugin. */
+export function bundledPluginDir({ stateDir, home = os.homedir() } = {}) {
+  return path.join(extensionsDir({ stateDir, home }), PLUGIN_ID)
 }

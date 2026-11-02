@@ -140,3 +140,33 @@ export function removeMcpServer(data, name) {
   }
   return "removed"
 }
+
+export function getPluginEntry(data, id) {
+  return data?.plugins?.entries?.[id] ?? null
+}
+
+/** Enable or disable one `plugins.entries.<id>` entry. Returns "added" | "updated" | "unchanged". */
+export function setPluginEnabled(data, id, enabled = true) {
+  if (!data.plugins || typeof data.plugins !== "object") data.plugins = {}
+  if (!data.plugins.entries || typeof data.plugins.entries !== "object") data.plugins.entries = {}
+  const current = data.plugins.entries[id]
+  if (current && typeof current === "object" && current.enabled === enabled) return "unchanged"
+  if (current && typeof current === "object") {
+    data.plugins.entries[id] = { ...current, enabled }
+    return "updated"
+  }
+  data.plugins.entries[id] = { enabled }
+  return "added"
+}
+
+/** Remove one `plugins.entries.<id>` entry and tidy now-empty parents. Returns "removed" | "absent". */
+export function removePluginEntry(data, id) {
+  const entries = data?.plugins?.entries
+  if (!entries || typeof entries !== "object" || !(id in entries)) return "absent"
+  delete entries[id]
+  if (Object.keys(entries).length === 0) {
+    delete data.plugins.entries
+    if (Object.keys(data.plugins).length === 0) delete data.plugins
+  }
+  return "removed"
+}

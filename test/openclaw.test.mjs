@@ -9,11 +9,13 @@ import { fileURLToPath } from "node:url"
 import {
   MCP_SERVER_NAME,
   SKILL_NAME,
+  PLUGIN_ID,
   openclawHome,
   workspaceDir,
   openclawSkillDirs,
   configuredExtraDirs,
   bundledSkillDir,
+  bundledPluginDir,
   configFile,
 } from "../src/paths.mjs"
 import {
@@ -24,9 +26,11 @@ import {
   getMcpServer,
   setMcpServer,
   removeMcpServer,
+  getPluginEntry,
 } from "../src/config.mjs"
 import { installOpenClaw, uninstallOpenClaw, inspectOpenClaw } from "../src/install.mjs"
 import { auditOpenClaw } from "../src/index.mjs"
+import { TOOL_NAME, COMMAND_NAME, renderCompact, summarizeForTool, runSkillsDoctor } from "../src/tool.mjs"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repo = path.resolve(here, "..")
@@ -194,6 +198,11 @@ test("install: uses the official CLI when present, falls back when it refuses", 
     cli: "C:/fake/openclaw.cmd",
     run: (exe, args) => {
       calls.push([exe, ...args])
+      // Simulate the CLI persisting the entry it was asked to add.
+      const data = loadConfig({ stateDir }).data
+      data.mcp = { servers: { [MCP_SERVER_NAME]: MCP_ENTRY } }
+      fs.mkdirSync(stateDir, { recursive: true })
+      fs.writeFileSync(configFile({ stateDir }), JSON.stringify(data))
       return { ok: true, status: 0, stdout: "", stderr: "" }
     },
   })
@@ -306,4 +315,156 @@ test("bin: doctor --json runs end to end", () => {
   assert.equal(data.workspace, workspace)
   assert.equal(data.skillInstalled, false)
   assert.equal(data.mcpEntry, null)
+  assert.equal(data.pluginInstalled, false)
+  assert.equal(data.pluginEnabled, false)
+})
+
+// ---------------------------------------------------------------- compact tool output
+
+test("renderCompact: budget line, capped findings and a next hint", () => {
+  const findings = Array.from({ length: 8 }, (_, index) => ({
+    rule: "long-description",
+    severity: "warn",
+    message: `finding ${index} ${"detail ".repeat(40)}`,
+  }))
+  const audit = {
+    summary: { total: 3, unique: 3, advertised: 2, hidden: 0, shadowed: 0, advertisedTokens: 2400, bodyTokens: 100 },
+    budget: 1200,
+    counts: { errors: 1, warnings: 2, infos: 0 },
+    findings,
+    openclaw: { workspace: "C:/ws", stateDir: "C:/state" },
+  }
+  const text = renderCompact(audit, { limit: 5 })
+  assert.match(text, /3 skills, 2 advertised/)
+  assert.match(text, /~2400 description tokens\/step \(budget 1200, over by 1200\)/)
+  assert.match(text, /findings: 1 error, 2 warn/)
+  assert.equal(text.split("\n").filter((line) => line.startsWith("- [")).length, 5)
+  assert.match(text, /…and 3 more/)
+  assert.ok(text.split("\n").every((line) => line.length <= 260), "lines must stay bounded")
+  assert.match(text, /next: npx -y openclaw-skills-doctor plan/)
+
+  const report = summarizeForTool(audit, { limit: 5 }).report
+  assert.equal(report.totalFindings, 8)
+  assert.equal(report.findings.length, 5)
+  assert.ok(!("status" in report), "reserved keys stay out of details")
+})
+
+test("runSkillsDoctor: audits OpenClaw roots and returns compact text", async () => {
+  const { home, stateDir, workspace } = sandbox()
+  skill(path.join(workspace, "skills"), "alpha", "workspace alpha skill")
+  skill(path.join(stateDir, "skills"), "beta", "managed beta skill")
+  const { audit, text, details } = await runSkillsDoctor({ home, env: {}, stateDir, workspace, includeGlobal: false })
+  assert.equal(audit.skills.length, 2)
+  assert.match(text, /2 skills, 2 advertised/)
+  assert.equal(details.report.workspace, workspace)
+  assert.equal(details.report.skills, 2)
+})
+
+// ---------------------------------------------------------------- native plugin
+
+test("plugin manifest, package metadata and entry stay in sync", () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(repo, "openclaw.plugin.json"), "utf8"))
+  const pkg = JSON.parse(fs.readFileSync(path.join(repo, "package.json"), "utf8"))
+  const entry = fs.readFileSync(path.join(repo, "src", "openclaw-plugin.mjs"), "utf8")
+
+  assert.equal(manifest.id, PLUGIN_ID)
+  assert.deepEqual(manifest.contracts.tools, [TOOL_NAME])
+  assert.equal(manifest.activation.onStartup, true)
+  assert.ok(manifest.configSchema && typeof manifest.configSchema === "object")
+  assert.deepEqual(pkg.openclaw.extensions, ["./src/openclaw-plugin.mjs"])
+  assert.equal(pkg.openclaw.plugin.id, PLUGIN_ID)
+
+  assert.match(entry, /definePluginEntry\(\{/)
+  assert.match(entry, /id: PLUGIN_ID/)
+  assert.ok(entry.includes("api.registerTool("), "registers the tool")
+  assert.ok(entry.includes("api.registerCommand("), "registers the command")
+  assert.ok(entry.includes(TOOL_NAME))
+  assert.match(entry, /name: COMMAND_NAME/)
+  assert.ok(fs.existsSync(path.join(repo, "src", "openclaw-plugin.mjs")))
+})
+
+test("install --plugin: copies the extension and enables it", () => {
+  const { home, stateDir, workspace } = sandbox()
+  const result = installOpenClaw({ home, env: {}, stateDir, workspace, cli: null, plugin: true })
+  assert.equal(result.errors.length, 0)
+  assert.equal(result.plugin.state, "installed")
+
+  const target = bundledPluginDir({ stateDir, home })
+  assert.ok(fs.existsSync(path.join(target, "openclaw.plugin.json")))
+  assert.ok(fs.existsSync(path.join(target, "src", "openclaw-plugin.mjs")))
+  assert.ok(fs.existsSync(path.join(target, "package.json")))
+  assert.equal(getPluginEntry(loadConfig({ stateDir }).data, PLUGIN_ID).enabled, true)
+
+  const facts = inspectOpenClaw({ home, env: {}, stateDir, workspace })
+  assert.equal(facts.pluginInstalled, true)
+  assert.equal(facts.pluginEnabled, true)
+})
+
+test("uninstall --plugin: removes the extension and the plugin entry", () => {
+  const { home, stateDir, workspace } = sandbox()
+  installOpenClaw({ home, env: {}, stateDir, workspace, cli: null, plugin: true })
+  const result = uninstallOpenClaw({ home, env: {}, stateDir, workspace, cli: null, plugin: true })
+  assert.equal(result.plugin.state, "removed")
+  assert.equal(fs.existsSync(bundledPluginDir({ stateDir, home })), false)
+  assert.equal(getPluginEntry(loadConfig({ stateDir }).data, PLUGIN_ID), null)
+})
+
+test("install: --mcp-only and --skill-only are independent", () => {
+  const home = tmpdir()
+  const stateDir = path.join(home, "state")
+  const workspace = path.join(stateDir, "workspace")
+
+  const mcpOnly = installOpenClaw({ home, env: {}, stateDir, workspace, cli: null, mcp: true, skill: false })
+  assert.equal(mcpOnly.skill.state, "skipped")
+  assert.equal(getMcpServer(loadConfig({ stateDir }).data, MCP_SERVER_NAME).command, "npx")
+  assert.equal(fs.existsSync(path.join(workspace, "skills", SKILL_NAME)), false)
+
+  const other = path.join(home, "state2")
+  const otherWs = path.join(other, "workspace")
+  const skillOnly = installOpenClaw({ home, env: {}, stateDir: other, workspace: otherWs, cli: null, mcp: false, skill: true })
+  assert.equal(skillOnly.mcp.state, "skipped")
+  assert.ok(fs.existsSync(path.join(otherWs, "skills", SKILL_NAME, "SKILL.md")))
+  assert.equal(fs.existsSync(configFile({ stateDir: other })), false)
+})
+
+test("install: verifies the CLI write and falls back when nothing was persisted", () => {
+  const { home, stateDir, workspace } = sandbox()
+  const result = installOpenClaw({
+    home,
+    env: {},
+    stateDir,
+    workspace,
+    cli: "C:/fake/openclaw.cmd",
+    run: () => ({ ok: true, status: 0, stdout: "", stderr: "" }), // reports success, writes nothing
+  })
+  assert.equal(result.mcp.method, "config")
+  assert.equal(result.mcp.state, "added")
+  assert.ok(result.warnings.some((line) => /did not persist/.test(line)))
+  assert.equal(getMcpServer(loadConfig({ stateDir }).data, MCP_SERVER_NAME).command, "npx")
+})
+
+test("install: uses openclaw mcp set when the saved entry differs", () => {
+  const { home, stateDir, workspace } = sandbox()
+  fs.mkdirSync(stateDir, { recursive: true })
+  fs.writeFileSync(
+    configFile({ stateDir }),
+    JSON.stringify({ mcp: { servers: { [MCP_SERVER_NAME]: { command: "old", args: [] } } } }, null, 2),
+  )
+  const calls = []
+  const result = installOpenClaw({
+    home,
+    env: {},
+    stateDir,
+    workspace,
+    cli: "C:/fake/openclaw.cmd",
+    run: (_exe, args) => {
+      calls.push(args)
+      const data = JSON.parse(fs.readFileSync(configFile({ stateDir }), "utf8"))
+      data.mcp = { servers: { [MCP_SERVER_NAME]: JSON.parse(args[3]) } }
+      fs.writeFileSync(configFile({ stateDir }), JSON.stringify(data))
+      return { ok: true, status: 0, stdout: "", stderr: "" }
+    },
+  })
+  assert.deepEqual(calls[0].slice(0, 3), ["mcp", "set", MCP_SERVER_NAME])
+  assert.equal(result.mcp.state, "updated")
 })
