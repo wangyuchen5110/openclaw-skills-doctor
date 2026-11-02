@@ -1,12 +1,45 @@
-# openclaw-skills-doctor
+<p align="center">
+  <img src="https://raw.githubusercontent.com/wangyuchen5110/openclaw-skills-doctor/main/docs/assets/banner.svg" alt="openclaw-skills-doctor — 审计 OpenClaw 加载的 skills" width="100%">
+</p>
 
-审计 **OpenClaw** 实际加载的 skills：每步 token 开销、被遮蔽的重复定义、断链引用、预算超标 —— 并给出可量化的精简方案。
+<h1 align="center">openclaw-skills-doctor</h1>
+
+<p align="center">
+  <b>审计 OpenClaw 实际加载的 skills：每步 token 开销、被遮蔽的重复定义、断链引用。</b><br>
+  并给出可量化的裁剪 / 隐藏方案。
+</p>
+
+<p align="center">
+  <a href="https://github.com/wangyuchen5110/openclaw-skills-doctor/stargazers"><img src="https://img.shields.io/github/stars/wangyuchen5110/openclaw-skills-doctor?style=for-the-badge&color=58a6ff" alt="GitHub stars"></a>
+  <a href="https://github.com/wangyuchen5110/openclaw-skills-doctor/actions/workflows/test.yml"><img src="https://github.com/wangyuchen5110/openclaw-skills-doctor/actions/workflows/test.yml/badge.svg" alt="tests"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3fb950?style=for-the-badge" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/node-%E2%89%A520-3fb950?style=for-the-badge" alt="Node >= 20">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/runs%20locally-100%25-3fb950?style=for-the-badge" alt="本地运行">
+  <img src="https://img.shields.io/badge/telemetry-none-3fb950?style=for-the-badge" alt="无遥测">
+  <img src="https://img.shields.io/badge/user%20data-never%20read-3fb950?style=for-the-badge" alt="不读取用户数据">
+</p>
+
+<p align="center">
+  <a href="README.md">English</a> · 简体中文 · <a href="CHANGELOG.md">变更记录</a> · <a href="#隐私纯本地运行不收集数据">隐私</a>
+</p>
+
+> **纯本地运行。** 无遥测、不需要账号、不上传 —— 你的 skill、配置和文件不会离开你的机器。见[隐私](#隐私纯本地运行不收集数据)。
 
 OpenClaw 会把每个可用 skill 压成一段紧凑 XML 注入系统提示词：大约 **每个 skill 97 字符 + name/description/location 的长度，而且每个模型步骤都要付一次**。这个工具测量这笔开销、指出同一名字到底哪个定义生效，并能裁剪或隐藏昂贵的那些。
 
 三种用法：**CLI**、**MCP server**、**原生 OpenClaw 插件**（`skills_doctor` 工具 + `/skills-doctor` 命令）。三者共用同一套审计核心，数字一致。
 
 它是 [`opencode-skills-doctor`](https://github.com/wangyuchen5110/opencodeplugginprogram) 的一个聚焦封装，额外理解 OpenClaw 的 skill 根目录、优先级、`openclaw.json`、MCP 注册表和插件 API。
+
+## 目录
+
+| | |
+|---|---|
+| [快速开始](#快速开始) · [隐私](#隐私纯本地运行不收集数据) | [审计范围](#审计范围) · [工作原理](#工作原理) |
+| [安装集成](#安装集成) · [原生插件](#原生插件可选) | [路径解析](#路径解析) · [命令](#命令) |
 
 ## 快速开始
 
@@ -18,6 +51,28 @@ npx -y openclaw-skills-doctor check --html openclaw-report.html --open
 ```
 
 无需配置：state 目录和 workspace 的解析规则与 OpenClaw 一致。
+
+### 示例输出
+
+```text
+$ npx -y openclaw-skills-doctor doctor
+openclaw-skills-doctor doctor
+  cli:        /usr/local/bin/openclaw
+  state dir:  /home/you/.openclaw
+  workspace:  /home/you/.openclaw/workspace
+  config:     /home/you/.openclaw/openclaw.json
+
+  skill roots:
+    + /home/you/.openclaw/workspace/skills
+    - /home/you/.openclaw/workspace/.agents/skills
+    - /home/you/.agents/skills
+    + /home/you/.openclaw/skills
+
+  mcp entry:  saved
+  bundled skill: installed
+  native plugin: installed + enabled
+  plugin dir: /home/you/.openclaw/extensions/openclaw-skills-doctor
+```
 
 ## 隐私：纯本地运行，不收集数据
 
@@ -46,6 +101,21 @@ OpenClaw 文件型 skill 根目录，优先级从高到低：
 | 5+ | 额外目录 | `openclaw.json` 里的 `skills.load.extraDirs` |
 
 封装层按这个顺序把目录交给核心审计器，所以遮蔽报告里的「生效版本」与 OpenClaw 运行时一致。默认不扫描其它 agent 的全局根目录（Claude / OpenCode / Grok / Cursor / Kimi / Hermes），需要时加 `--include-other-agents`。
+
+## 工作原理
+
+```mermaid
+flowchart LR
+  A["OpenClaw skill 根目录<br/>workspace · .agents · state · extraDirs"] --> B["审计核心<br/>解析 · lint · token 预算"]
+  B --> C{"有 findings？"}
+  C -->|"预算 / 重复 / 断链"| D["plan<br/>裁剪描述、隐藏 skill"]
+  C -->|"始终"| E["报告<br/>精简工具输出 · JSON · HTML · 终端"]
+  D --> F["fix<br/>归档（可逆）· autoinvoke:false"]
+  E --> G["agent / CI / 你"]
+  F --> G
+```
+
+所有测量都在本地完成且结果确定：同样的 skill 文件得到同样的数字，所以报告可以直接放进 CI 做 diff。
 
 ## 安装集成
 
