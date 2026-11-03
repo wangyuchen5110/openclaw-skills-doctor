@@ -178,7 +178,7 @@ ClawHub 版本已通过自动安全审计
 openclaw mcp add skills-doctor \
   --command npx \
   --arg -y \
-  --arg opencode-skills-doctor \
+  --arg opencode-skills-doctor@0.9.4 \
   --arg mcp
 ```
 

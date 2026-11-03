@@ -1,3 +1,12 @@
+## 0.3.5
+
+- The saved MCP entry now pins the audited core version
+  (`opencode-skills-doctor@0.9.4`) instead of an unversioned `npx`, so a
+  reviewed install keeps working even if a later core release changes behaviour.
+  The `opencode-skills-doctor` dependency floor moved to `^0.9.4`.
+- Docs: manual MCP snippets pin the same version.
+- Tests: 29.
+
 ## 0.3.4
 
 - Preserve `openclaw.json` permissions when rewriting it and on the `.bak-*`

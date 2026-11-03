@@ -2,7 +2,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { configFile } from "./paths.mjs"
 
-export const MCP_ENTRY = { command: "npx", args: ["-y", "opencode-skills-doctor", "mcp"] }
+export const MCP_ENTRY = { command: "npx", args: ["-y", "opencode-skills-doctor@0.9.4", "mcp"] }
 
 /** Drop `//` and `/* *\/` comments plus trailing commas; string contents are preserved. */
 export function stripJsonc(text) {

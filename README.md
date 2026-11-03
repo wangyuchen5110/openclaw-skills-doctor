@@ -207,7 +207,7 @@ If you prefer to wire the MCP server yourself:
 openclaw mcp add skills-doctor \
   --command npx \
   --arg -y \
-  --arg opencode-skills-doctor \
+  --arg opencode-skills-doctor@0.9.4 \
   --arg mcp
 ```
 
@@ -219,7 +219,7 @@ or in `~/.openclaw/openclaw.json`:
     servers: {
       "skills-doctor": {
         command: "npx",
-        args: ["-y", "opencode-skills-doctor", "mcp"],
+        args: ["-y", "opencode-skills-doctor@0.9.4", "mcp"],
       },
     },
   },
