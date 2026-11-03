@@ -1,3 +1,11 @@
+## 0.3.6
+
+- `openclaw.json` writes fail closed: if the atomic replace (`rename`) cannot be
+  completed, the temp file is removed and the error propagates. The previous
+  non-atomic fallback (a direct write) is gone, so a failed write can no longer
+  leave a partially written or permission-relaxed config behind.
+- Tests: 30.
+
 ## 0.3.5
 
 - The saved MCP entry now pins the audited core version

@@ -451,3 +451,27 @@ test("doctor --json 不回显已保存的 MCP 值", () => {
   assert.equal("mcpEntry" in facts, false)
   assert.equal(JSON.stringify(facts).includes("opencode-skills-doctor"), false)
 })
+
+test("config: 原子替换失败时失败关闭，原文件与临时文件都干净", () => {
+  const { stateDir } = sandbox()
+  fs.mkdirSync(stateDir, { recursive: true })
+  const file = configFile({ stateDir })
+  const original = '{"keep": true}\n'
+  fs.writeFileSync(file, original)
+
+  const rename = fs.renameSync
+  fs.renameSync = () => {
+    throw new Error("rename blocked")
+  }
+  try {
+    assert.throws(() => saveConfig({ file, data: { mcp: { servers: {} } } }), /rename blocked/)
+  } finally {
+    fs.renameSync = rename
+  }
+
+  assert.equal(fs.readFileSync(file, "utf8"), original)
+  const leftovers = fs
+    .readdirSync(stateDir)
+    .filter((name) => name.includes(".skills-doctor-") && name.endsWith(".tmp"))
+  assert.deepEqual(leftovers, [])
+})

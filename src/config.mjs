@@ -132,19 +132,22 @@ function existingMode(file) {
 /**
  * Write atomically and keep the file's permissions: `openclaw.json` can hold
  * credentials (0600), and a plain rewrite would inherit the umask (0644).
+ *
+ * Fails closed: if the atomic replace cannot be completed the original file is
+ * left untouched and the error propagates - there is no non-atomic fallback.
  */
 function atomicWrite(file, text) {
   const previousMode = existingMode(file)
   const tmp = `${file}.skills-doctor-${process.pid}.tmp`
   fs.mkdirSync(path.dirname(file), { recursive: true })
-  fs.writeFileSync(tmp, text, { encoding: "utf8", mode: 0o600 })
   try {
+    fs.writeFileSync(tmp, text, { encoding: "utf8", mode: 0o600 })
     fs.renameSync(tmp, file)
-  } catch {
-    fs.writeFileSync(file, text, { encoding: "utf8", mode: 0o600 })
+  } catch (err) {
     try {
       fs.rmSync(tmp, { force: true })
     } catch {}
+    throw err
   }
   try {
     fs.chmodSync(file, previousMode ?? 0o600)

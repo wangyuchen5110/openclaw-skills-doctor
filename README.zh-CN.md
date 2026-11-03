@@ -221,7 +221,7 @@ npx -y openclaw-skills-doctor fix --hide legacy-skill
 
 - **纯本地**：无遥测、无后端，数据不出机器；唯一可选的联网是核心 CLI 每天一次的 npm 版本检查，可关闭。
 - `check` / `plan` / `scan` / `doctor` 只读、离线（不联网、不调模型）。
-- `install` / `uninstall` 改 `openclaw.json` 前先备份、保留原文件权限位（凭据文件通常是 `0600`），且**不会启动任何子进程**。
+- `install` / `uninstall` 改 `openclaw.json` 前先备份、保留原文件权限位（凭据文件通常是 `0600`）、原子写入，且**不会启动任何子进程**；原子替换失败时**失败关闭**，不写任何内容、原文件保持不变。
 - `uninstall` 只有在成功读到 `SKILL.md` 且其中仍声明 `name: openclaw-skills-doctor` 时才删随包 skill；读不到就保留目录并给出警告。
 - 配置解析支持注释和尾逗号；遇到其它 JSON5 专有语法（无引号 key、单引号）只报告不重写 —— 这种情况请用 `openclaw mcp add/set/unset`。
 - 它不是沙箱：只审计配置和文件，不限制 agent 能做什么。
