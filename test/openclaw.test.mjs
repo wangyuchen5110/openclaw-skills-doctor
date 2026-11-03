@@ -187,41 +187,19 @@ test("install: dry run writes nothing", () => {
   assert.equal(fs.existsSync(path.join(workspace, "skills", SKILL_NAME)), false)
 })
 
-test("install: uses the official CLI when present, falls back when it refuses", () => {
+test("install: 已存在的不同条目会被覆盖并备份（不调用外部命令）", () => {
   const { home, stateDir, workspace } = sandbox()
-  const calls = []
-  const result = installOpenClaw({
-    home,
-    env: {},
-    stateDir,
-    workspace,
-    cli: "C:/fake/openclaw.cmd",
-    run: (exe, args) => {
-      calls.push([exe, ...args])
-      // Simulate the CLI persisting the entry it was asked to add.
-      const data = loadConfig({ stateDir }).data
-      data.mcp = { servers: { [MCP_SERVER_NAME]: MCP_ENTRY } }
-      fs.mkdirSync(stateDir, { recursive: true })
-      fs.writeFileSync(configFile({ stateDir }), JSON.stringify(data))
-      return { ok: true, status: 0, stdout: "", stderr: "" }
-    },
-  })
-  assert.equal(result.mcp.state, "added")
-  assert.equal(result.mcp.method, "cli")
-  assert.deepEqual(calls[0].slice(0, 5), ["C:/fake/openclaw.cmd", "mcp", "add", "skills-doctor", "--command"])
-  assert.ok(!calls[0].includes("--probe"))
-
-  const fallback = installOpenClaw({
-    home,
-    env: {},
-    stateDir: path.join(home, "state2"),
-    workspace: path.join(home, "state2", "workspace"),
-    cli: "C:/fake/openclaw.cmd",
-    run: () => ({ ok: false, status: 1, stdout: "", stderr: "stop the Gateway first" }),
-  })
-  assert.equal(fallback.mcp.method, "config")
-  assert.equal(fallback.mcp.state, "added")
-  assert.ok(fallback.warnings.some((line) => /stop the Gateway|patching/.test(line)))
+  fs.mkdirSync(stateDir, { recursive: true })
+  fs.writeFileSync(
+    configFile({ stateDir }),
+    JSON.stringify({ mcp: { servers: { [MCP_SERVER_NAME]: { command: "old", args: [] } } } }, null, 2),
+  )
+  const result = installOpenClaw({ home, env: {}, stateDir, workspace })
+  assert.equal(result.mcp.method, "config")
+  assert.equal(result.mcp.state, "updated")
+  assert.deepEqual(getMcpServer(loadConfig({ stateDir }).data, MCP_SERVER_NAME), MCP_ENTRY)
+  const backups = fs.readdirSync(stateDir).filter((name) => name.startsWith("openclaw.json.bak-"))
+  assert.equal(backups.length, 1)
 })
 
 test("uninstall: removes the MCP entry and the bundled skill", () => {
@@ -282,7 +260,7 @@ test("inspectOpenClaw: reports paths, roots and install state", () => {
   assert.equal(facts.stateDir, stateDir)
   assert.equal(facts.workspace, workspace)
   assert.equal(facts.skillInstalled, true)
-  assert.equal(facts.mcpEntry.command, "npx")
+  assert.equal(facts.mcpConfigured, true)
   assert.ok(facts.skillDirs.some((entry) => entry.dir === path.join(workspace, "skills") && entry.exists))
 })
 
@@ -314,7 +292,7 @@ test("bin: doctor --json runs end to end", () => {
   assert.equal(data.stateDir, stateDir)
   assert.equal(data.workspace, workspace)
   assert.equal(data.skillInstalled, false)
-  assert.equal(data.mcpEntry, null)
+  assert.equal(data.mcpConfigured, false)
   assert.equal(data.pluginInstalled, false)
   assert.equal(data.pluginEnabled, false)
 })
@@ -427,48 +405,6 @@ test("install: --mcp-only and --skill-only are independent", () => {
   assert.equal(fs.existsSync(configFile({ stateDir: other })), false)
 })
 
-test("install: verifies the CLI write and falls back when nothing was persisted", () => {
-  const { home, stateDir, workspace } = sandbox()
-  const result = installOpenClaw({
-    home,
-    env: {},
-    stateDir,
-    workspace,
-    cli: "C:/fake/openclaw.cmd",
-    run: () => ({ ok: true, status: 0, stdout: "", stderr: "" }), // reports success, writes nothing
-  })
-  assert.equal(result.mcp.method, "config")
-  assert.equal(result.mcp.state, "added")
-  assert.ok(result.warnings.some((line) => /did not persist/.test(line)))
-  assert.equal(getMcpServer(loadConfig({ stateDir }).data, MCP_SERVER_NAME).command, "npx")
-})
-
-test("install: uses openclaw mcp set when the saved entry differs", () => {
-  const { home, stateDir, workspace } = sandbox()
-  fs.mkdirSync(stateDir, { recursive: true })
-  fs.writeFileSync(
-    configFile({ stateDir }),
-    JSON.stringify({ mcp: { servers: { [MCP_SERVER_NAME]: { command: "old", args: [] } } } }, null, 2),
-  )
-  const calls = []
-  const result = installOpenClaw({
-    home,
-    env: {},
-    stateDir,
-    workspace,
-    cli: "C:/fake/openclaw.cmd",
-    run: (_exe, args) => {
-      calls.push(args)
-      const data = JSON.parse(fs.readFileSync(configFile({ stateDir }), "utf8"))
-      data.mcp = { servers: { [MCP_SERVER_NAME]: JSON.parse(args[3]) } }
-      fs.writeFileSync(configFile({ stateDir }), JSON.stringify(data))
-      return { ok: true, status: 0, stdout: "", stderr: "" }
-    },
-  })
-  assert.deepEqual(calls[0].slice(0, 3), ["mcp", "set", MCP_SERVER_NAME])
-  assert.equal(result.mcp.state, "updated")
-})
-
 // ---------------------------------------------------------------- bug fixes
 
 test("stripJsonc: 字符串里的 ,} / ,] 不被截断", () => {
@@ -476,37 +412,20 @@ test("stripJsonc: 字符串里的 ,} / ,] 不被截断", () => {
   assert.deepEqual(JSON.parse(stripJsonc(text)), { note: "a,}", list: [1, 2], x: "keep,]" })
 })
 
-test("install --plugin: 保留 CLI 写入的 MCP 条目", () => {
+test("install --plugin: 一份配置同时写入 MCP 条目与 plugin 开关", () => {
   const { home, stateDir, workspace } = sandbox()
-  const run = (_exe, args) => {
-    const file = configFile({ stateDir })
-    const data = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {}
-    if (args[0] === "mcp" && args[1] === "add") {
-      data.mcp = { servers: { [MCP_SERVER_NAME]: MCP_ENTRY } }
-    }
-    fs.mkdirSync(stateDir, { recursive: true })
-    fs.writeFileSync(file, JSON.stringify(data, null, 2))
-    return { ok: true, status: 0, stdout: "", stderr: "" }
-  }
-  const result = installOpenClaw({ home, env: {}, stateDir, workspace, cli: "C:/fake/openclaw.cmd", plugin: true, run })
-  assert.equal(result.mcp.method, "cli")
-  assert.deepEqual(getMcpServer(loadConfig({ stateDir }).data, MCP_SERVER_NAME), MCP_ENTRY)
-  assert.equal(getPluginEntry(loadConfig({ stateDir }).data, PLUGIN_ID).enabled, true)
+  const result = installOpenClaw({ home, env: {}, stateDir, workspace, plugin: true })
+  assert.equal(result.mcp.method, "config")
+  assert.equal(result.mcp.state, "added")
+  const data = loadConfig({ stateDir }).data
+  assert.deepEqual(getMcpServer(data, MCP_SERVER_NAME), MCP_ENTRY)
+  assert.equal(getPluginEntry(data, PLUGIN_ID).enabled, true)
 })
 
-test("uninstall --plugin: CLI 删掉 MCP 后不会把它写回来", () => {
+test("uninstall --plugin: 同时移除 MCP 条目与 plugin 开关", () => {
   const { home, stateDir, workspace } = sandbox()
-  installOpenClaw({ home, env: {}, stateDir, workspace, cli: null, plugin: true })
-  const run = (_exe, args) => {
-    const file = configFile({ stateDir })
-    const data = JSON.parse(fs.readFileSync(file, "utf8"))
-    if (args[0] === "mcp" && args[1] === "unset" && data.mcp?.servers) {
-      delete data.mcp.servers[MCP_SERVER_NAME]
-    }
-    fs.writeFileSync(file, JSON.stringify(data, null, 2))
-    return { ok: true, status: 0, stdout: "", stderr: "" }
-  }
-  const result = uninstallOpenClaw({ home, env: {}, stateDir, workspace, cli: "C:/fake/openclaw.cmd", plugin: true, run })
+  installOpenClaw({ home, env: {}, stateDir, workspace, plugin: true })
+  const result = uninstallOpenClaw({ home, env: {}, stateDir, workspace, plugin: true })
   assert.equal(result.mcp.state, "removed")
   assert.equal(getMcpServer(loadConfig({ stateDir }).data, MCP_SERVER_NAME), null)
   assert.equal(getPluginEntry(loadConfig({ stateDir }).data, PLUGIN_ID), null)

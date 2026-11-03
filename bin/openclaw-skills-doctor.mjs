@@ -121,7 +121,7 @@ function printResult(result) {
     console.log("  skill roots:")
     for (const entry of data.skillDirs) console.log(`    ${entry.exists ? "+" : "-"} ${entry.dir}`)
     console.log("")
-    console.log(`  mcp entry:  ${data.mcpEntry ? "saved" : "missing"}`)
+    console.log(`  mcp entry:  ${data.mcpConfigured ? "saved" : "missing"}`)
     console.log(`  bundled skill: ${data.skillInstalled ? "installed" : "missing"}`)
     console.log(`  native plugin: ${data.pluginInstalled ? (data.pluginEnabled ? "installed + enabled" : "installed, disabled") : "missing"}`)
     if (data.pluginDir) console.log(`  plugin dir: ${data.pluginDir}`)

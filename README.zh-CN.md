@@ -133,7 +133,7 @@ npx -y openclaw-skills-doctor install
 
 做两件事，且幂等：
 
-1. 在 `~/.openclaw/openclaw.json` 写入 `mcp.servers.skills-doctor` —— 有 `openclaw` CLI 时走 `openclaw mcp add`（条目已存在但不同则走 `mcp set`），否则直接改配置并把原文件备份成 `openclaw.json.bak-<时间戳>`。CLI 写完后会回读配置校验，没写进去就自动回退到直接改配置；
+1. 在 `~/.openclaw/openclaw.json` 写入 `mcp.servers.skills-doctor` —— 直接改配置，并保留 `openclaw.json.bak-<时间戳>` 备份、原子写入。**不会启动 `openclaw` CLI 子进程**，所以 Gateway 正在运行时也能装；
 2. 把随包 skill 安装到 `<workspace>/skills/openclaw-skills-doctor`。
 
 ```powershell
@@ -215,8 +215,8 @@ npx -y openclaw-skills-doctor fix --hide legacy-skill
 
 - **纯本地**：无遥测、无后端，数据不出机器；唯一可选的联网是核心 CLI 每天一次的 npm 版本检查，可关闭。
 - `check` / `plan` / `scan` / `doctor` 只读、离线（不联网、不调模型）。
-- `install` / `uninstall` 改 `openclaw.json` 前先备份；走 CLI 时根本不碰文件。
-- `uninstall` 只删 `SKILL.md` 里仍声明 `name: openclaw-skills-doctor` 的随包 skill，以及它认得的插件目录。
+- `install` / `uninstall` 改 `openclaw.json` 前先备份，且**不会启动任何子进程**。
+- `uninstall` 只有在成功读到 `SKILL.md` 且其中仍声明 `name: openclaw-skills-doctor` 时才删随包 skill；读不到就保留目录并给出警告。
 - 配置解析支持注释和尾逗号；遇到其它 JSON5 专有语法（无引号 key、单引号）只报告不重写 —— 这种情况请用 `openclaw mcp add/set/unset`。
 - 它不是沙箱：只审计配置和文件，不限制 agent 能做什么。
 

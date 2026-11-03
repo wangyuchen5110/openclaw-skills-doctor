@@ -23,7 +23,6 @@ export {
 export {
   findExecutable,
   detectCli,
-  runCommand,
   packageRoot,
   bundledSkillSource,
   installOpenClaw,

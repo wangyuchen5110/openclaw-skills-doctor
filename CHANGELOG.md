@@ -1,3 +1,17 @@
+## 0.3.3
+
+Security hardening after the ClawHub scan:
+
+- `install` / `uninstall` no longer spawn the `openclaw` CLI (`child_process` is
+  gone). The MCP entry is written by patching `openclaw.json` with a timestamped
+  backup and an atomic write, so it also works while the Gateway is running.
+- `uninstall` removes the bundled skill only when its `SKILL.md` was read
+  successfully **and** declares `name: openclaw-skills-doctor`; an unreadable
+  directory is left in place with a warning.
+- `doctor --json` no longer echoes saved MCP values (they can carry
+  credentials); it reports `mcpConfigured: true | false` instead.
+- Tests: 28.
+
 # Changelog
 
 ## 0.3.2

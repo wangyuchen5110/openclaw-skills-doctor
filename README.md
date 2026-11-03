@@ -148,11 +148,10 @@ npx -y openclaw-skills-doctor install
 That does two things and is idempotent:
 
 1. saves the MCP server definition `mcp.servers.skills-doctor` in
-   `~/.openclaw/openclaw.json` - through `openclaw mcp add` (or `mcp set` when
-   the saved entry differs) when the CLI is installed, otherwise by patching the
-   config directly (the previous file is backed up as
-   `openclaw.json.bak-<timestamp>`). A CLI write is verified against the config
-   and falls back to the patch if nothing was persisted;
+   `~/.openclaw/openclaw.json` by patching the config directly, with a
+   timestamped backup (`openclaw.json.bak-<timestamp>`) and an atomic write. It
+   never spawns the `openclaw` CLI, so it also works while the Gateway is
+   running;
 2. installs the bundled `openclaw-skills-doctor` skill into
    `<workspace>/skills/openclaw-skills-doctor`.
 
@@ -264,10 +263,11 @@ explicit `@id` reference while removing it from the model-facing list.
 
 - **Local-only:** no telemetry, no backend, nothing leaves the machine; the only optional network call is the core CLI's daily npm version check, which you can disable.
 - `check`, `plan`, `scan` and `doctor` are read-only and offline (no network, no LLM).
-- `install`/`uninstall` back up `openclaw.json` before rewriting it; the CLI path
-  leaves the file alone entirely.
-- `uninstall` only removes a bundled skill whose `SKILL.md` still declares
-  `name: openclaw-skills-doctor`, and a plugin directory it recognizes.
+- `install`/`uninstall` back up `openclaw.json` before rewriting it and never
+  spawn a child process.
+- `uninstall` only removes a bundled skill when its `SKILL.md` was read
+  successfully **and** still declares `name: openclaw-skills-doctor`; otherwise
+  it leaves the directory in place with a warning.
 - Config parsing understands JSON with comments and trailing commas. A file that
   uses other JSON5-only syntax (unquoted keys, single quotes) is reported, never
   rewritten - use `openclaw mcp add/set/unset` there instead.
