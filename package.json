@@ -40,7 +40,7 @@
     "prepublishOnly": "node test/openclaw.test.mjs && node scripts/validate-plugin.mjs"
   },
   "dependencies": {
-    "opencode-skills-doctor": "^0.8.1"
+    "opencode-skills-doctor": "^0.9.1"
   },
   "keywords": [
     "openclaw",
