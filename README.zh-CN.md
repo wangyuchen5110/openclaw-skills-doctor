@@ -12,6 +12,8 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/openclaw-skills-doctor"><img src="https://img.shields.io/npm/v/openclaw-skills-doctor?style=for-the-badge&color=3fb950" alt="npm version"></a>
   <a href="https://www.npmjs.com/package/openclaw-skills-doctor"><img src="https://img.shields.io/npm/dw/openclaw-skills-doctor?style=for-the-badge&color=2ea043" alt="npm downloads"></a>
+  <a href="https://clawhub.ai/wangyuchen5110/skills/skills-doctor"><img src="https://img.shields.io/badge/ClawHub-skill-ff6b35?style=for-the-badge" alt="ClawHub skill"></a>
+  <a href="https://clawhub.ai/wangyuchen5110/plugins/openclaw-skills-doctor"><img src="https://img.shields.io/badge/ClawHub-plugin-ff6b35?style=for-the-badge" alt="ClawHub plugin"></a>
   <a href="https://github.com/wangyuchen5110/openclaw-skills-doctor/stargazers"><img src="https://img.shields.io/github/stars/wangyuchen5110/openclaw-skills-doctor?style=for-the-badge&color=58a6ff" alt="GitHub stars"></a>
   <a href="https://github.com/wangyuchen5110/openclaw-skills-doctor/actions/workflows/test.yml"><img src="https://github.com/wangyuchen5110/openclaw-skills-doctor/actions/workflows/test.yml/badge.svg" alt="tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3fb950?style=for-the-badge" alt="MIT license"></a>
@@ -161,8 +163,12 @@ openclaw plugins inspect openclaw-skills-doctor --runtime --json  # 验证加载
 正式使用建议走受管安装：
 
 ```bash
-openclaw plugins install ./openclaw-skills-doctor
+openclaw plugins install clawhub:openclaw-skills-doctor   # 从 ClawHub 装
+openclaw plugins install ./openclaw-skills-doctor         # 从本地仓库装
 ```
+
+ClawHub 版本已通过自动安全审计
+（[v0.3.4](https://clawhub.ai/wangyuchen5110/plugins/openclaw-skills-doctor/security-audit)）。
 
 插件 API 目前是 **experimental**：固定 OpenClaw 版本，升级后用 `openclaw plugins inspect ... --runtime` 复核。本仓库是纯 JavaScript、无构建步骤（不依赖 TypeScript / TypeBox），插件入口就是测试覆盖的同一份代码。
 
