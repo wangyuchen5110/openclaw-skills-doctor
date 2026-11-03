@@ -60,6 +60,12 @@ npx -y openclaw-skills-doctor check --html openclaw-report.html --open
 Nothing to configure: the wrapper resolves the state dir and workspace the same
 way OpenClaw does.
 
+Or install the companion skill from ClawHub:
+
+```bash
+openclaw skills install @wangyuchen5110/skills-doctor
+```
+
 ### Example output
 
 ```text

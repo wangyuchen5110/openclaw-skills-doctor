@@ -54,6 +54,12 @@ npx -y openclaw-skills-doctor check --html openclaw-report.html --open
 
 无需配置：state 目录和 workspace 的解析规则与 OpenClaw 一致。
 
+也可以直接从 ClawHub 装配套 skill：
+
+```bash
+openclaw skills install @wangyuchen5110/skills-doctor
+```
+
 ### 示例输出
 
 ```text

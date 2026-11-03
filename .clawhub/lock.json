@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "@wangyuchen5110/skills-doctor": {
+      "version": "1.0.0",
+      "installedAt": 1793669819032,
+      "ownerHandle": "wangyuchen5110"
+    }
+  }
+}
