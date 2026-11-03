@@ -378,6 +378,16 @@ test("install --plugin: copies the extension and enables it", () => {
   assert.equal(facts.pluginEnabled, true)
 })
 
+test("uninstall without --plugin keeps the plugin entry and files", () => {
+  const { home, stateDir, workspace } = sandbox()
+  installOpenClaw({ home, env: {}, stateDir, workspace, cli: null, plugin: true })
+  const result = uninstallOpenClaw({ home, env: {}, stateDir, workspace, cli: null })
+  assert.equal(result.mcp.state, "removed")
+  assert.equal(getMcpServer(loadConfig({ stateDir }).data, MCP_SERVER_NAME), null)
+  assert.equal(getPluginEntry(loadConfig({ stateDir }).data, PLUGIN_ID).enabled, true)
+  assert.equal(fs.existsSync(bundledPluginDir({ stateDir, home })), true)
+})
+
 test("uninstall --plugin: removes the extension and the plugin entry", () => {
   const { home, stateDir, workspace } = sandbox()
   installOpenClaw({ home, env: {}, stateDir, workspace, cli: null, plugin: true })

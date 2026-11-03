@@ -324,7 +324,9 @@ export function uninstallOpenClaw({
   // --- Persist -------------------------------------------------------------
   if (!dryRun && configChanged && !errors.length) {
     try {
-      if (getPluginEntry(loaded.data, PLUGIN_ID)) removePluginEntry(loaded.data, PLUGIN_ID)
+      // Only `--plugin` owns the plugin entry. A plain uninstall that rewrites
+      // the MCP block must leave `plugins.entries` alone.
+      if (plugin && getPluginEntry(loaded.data, PLUGIN_ID)) removePluginEntry(loaded.data, PLUGIN_ID)
       const backup = saveConfig({ file: loaded.file, data: loaded.data })
       actions.push(`config: updated ${loaded.file}`)
       if (backup) actions.push(`backup: ${path.basename(backup)}`)

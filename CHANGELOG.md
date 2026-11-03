@@ -1,3 +1,10 @@
+## 0.3.7
+
+- `uninstall` without `--plugin` no longer deletes `plugins.entries["openclaw-skills-doctor"]`.
+  Rewriting the MCP block used to drop the plugin switch as well, while leaving the
+  extension files in place. `--plugin` still removes both the entry and the files.
+- Tests: 31 passing (the POSIX permission test is still skipped on Windows).
+
 ## 0.3.6
 
 - `openclaw.json` writes fail closed: if the atomic replace (`rename`) cannot be
