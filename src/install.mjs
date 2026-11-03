@@ -178,6 +178,10 @@ export function installOpenClaw({
       if (out.ok && written) {
         result.mcp = { server: MCP_SERVER_NAME, method: "cli", state: existing ? "updated" : "added" }
         actions.push(`mcp: ${CLI_NAME} mcp ${existing ? "set" : "add"} ${MCP_SERVER_NAME}`)
+        // Re-read: the CLI wrote the file, so our in-memory copy is stale. Saving
+        // it later (e.g. for --plugin) would drop the entry the CLI just added.
+        const fresh = loadConfig({ stateDir: state })
+        if (!fresh.error) loaded.data = fresh.data
       } else {
         result.mcp = { server: MCP_SERVER_NAME, method: "config", state: "failed" }
         warnings.push(
@@ -322,6 +326,8 @@ export function uninstallOpenClaw({
       if (out.ok && gone) {
         result.mcp = { server: MCP_SERVER_NAME, method: "cli", state: "removed" }
         actions.push(`mcp: ${CLI_NAME} mcp unset ${MCP_SERVER_NAME}`)
+        // Fresh read: a later save for --plugin must not resurrect the entry.
+        if (!after.error) loaded.data = after.data
       } else {
         configChanged = true
         result.mcp = { server: MCP_SERVER_NAME, method: "config", state: "removed" }

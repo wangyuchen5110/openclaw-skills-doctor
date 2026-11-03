@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.2
+
+Bug fixes from a full review:
+
+- JSONC parsing no longer truncates string values containing `,}` or `,]` while
+  removing trailing commas.
+- `install --plugin` no longer drops the MCP entry the `openclaw` CLI just wrote:
+  the config is re-read after a successful CLI write before the plugin entry is
+  saved.
+- `uninstall --plugin` no longer writes the just-removed MCP entry back into
+  `openclaw.json`.
+- Tests: 30.
+
 ## 0.3.1
 
 - `scripts/validate-plugin.mjs` (+ `npm run plugin:validate`, wired into CI and

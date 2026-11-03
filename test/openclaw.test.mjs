@@ -468,3 +468,46 @@ test("install: uses openclaw mcp set when the saved entry differs", () => {
   assert.deepEqual(calls[0].slice(0, 3), ["mcp", "set", MCP_SERVER_NAME])
   assert.equal(result.mcp.state, "updated")
 })
+
+// ---------------------------------------------------------------- bug fixes
+
+test("stripJsonc: 字符串里的 ,} / ,] 不被截断", () => {
+  const text = '{"note": "a,}", "list": [1, 2,], "x": "keep,]"}'
+  assert.deepEqual(JSON.parse(stripJsonc(text)), { note: "a,}", list: [1, 2], x: "keep,]" })
+})
+
+test("install --plugin: 保留 CLI 写入的 MCP 条目", () => {
+  const { home, stateDir, workspace } = sandbox()
+  const run = (_exe, args) => {
+    const file = configFile({ stateDir })
+    const data = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {}
+    if (args[0] === "mcp" && args[1] === "add") {
+      data.mcp = { servers: { [MCP_SERVER_NAME]: MCP_ENTRY } }
+    }
+    fs.mkdirSync(stateDir, { recursive: true })
+    fs.writeFileSync(file, JSON.stringify(data, null, 2))
+    return { ok: true, status: 0, stdout: "", stderr: "" }
+  }
+  const result = installOpenClaw({ home, env: {}, stateDir, workspace, cli: "C:/fake/openclaw.cmd", plugin: true, run })
+  assert.equal(result.mcp.method, "cli")
+  assert.deepEqual(getMcpServer(loadConfig({ stateDir }).data, MCP_SERVER_NAME), MCP_ENTRY)
+  assert.equal(getPluginEntry(loadConfig({ stateDir }).data, PLUGIN_ID).enabled, true)
+})
+
+test("uninstall --plugin: CLI 删掉 MCP 后不会把它写回来", () => {
+  const { home, stateDir, workspace } = sandbox()
+  installOpenClaw({ home, env: {}, stateDir, workspace, cli: null, plugin: true })
+  const run = (_exe, args) => {
+    const file = configFile({ stateDir })
+    const data = JSON.parse(fs.readFileSync(file, "utf8"))
+    if (args[0] === "mcp" && args[1] === "unset" && data.mcp?.servers) {
+      delete data.mcp.servers[MCP_SERVER_NAME]
+    }
+    fs.writeFileSync(file, JSON.stringify(data, null, 2))
+    return { ok: true, status: 0, stdout: "", stderr: "" }
+  }
+  const result = uninstallOpenClaw({ home, env: {}, stateDir, workspace, cli: "C:/fake/openclaw.cmd", plugin: true, run })
+  assert.equal(result.mcp.state, "removed")
+  assert.equal(getMcpServer(loadConfig({ stateDir }).data, MCP_SERVER_NAME), null)
+  assert.equal(getPluginEntry(loadConfig({ stateDir }).data, PLUGIN_ID), null)
+})

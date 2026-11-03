@@ -1,6 +1,6 @@
 {
   "name": "openclaw-skills-doctor",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Audit the skills OpenClaw loads: per-step token cost, shadowed duplicates, broken references. CLI + MCP server + native plugin + a bundled skill.",
   "type": "module",
   "bin": {

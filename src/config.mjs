@@ -6,6 +6,11 @@ export const MCP_ENTRY = { command: "npx", args: ["-y", "opencode-skills-doctor"
 
 /** Drop `//` and `/* *\/` comments plus trailing commas; string contents are preserved. */
 export function stripJsonc(text) {
+  return stripTrailingCommas(stripJsonComments(text))
+}
+
+/** First pass: remove comments without touching string contents. */
+function stripJsonComments(text) {
   let out = ""
   let inString = false
   let escaped = false
@@ -55,7 +60,38 @@ export function stripJsonc(text) {
     out += ch
   }
 
-  return out.replace(/,(\s*[}\]])/g, "$1")
+  return out
+}
+
+/** Second pass: drop trailing commas character by character, so `a,}` in a string survives. */
+function stripTrailingCommas(text) {
+  let out = ""
+  let inString = false
+  let escaped = false
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (inString) {
+      out += ch
+      if (escaped) escaped = false
+      else if (ch === "\\") escaped = true
+      else if (ch === '"') inString = false
+      continue
+    }
+    if (ch === '"') {
+      inString = true
+      out += ch
+      continue
+    }
+    if (ch === ",") {
+      let j = i + 1
+      while (j < text.length && /\s/.test(text[j])) j++
+      if (text[j] === "}" || text[j] === "]") continue
+    }
+    out += ch
+  }
+
+  return out
 }
 
 /**
