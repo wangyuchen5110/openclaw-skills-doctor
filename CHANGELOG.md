@@ -2,6 +2,7 @@
 
 ## 0.3.2
 
+- ClawHub plugin metadata: openclaw.compat.pluginApi / openclaw.build.openclawVersion (target OpenClaw 2026.10.9) and an optional openclaw peer dependency, so the package can be published to ClawHub.
 Bug fixes from a full review:
 
 - JSONC parsing no longer truncates string values containing `,}` or `,]` while

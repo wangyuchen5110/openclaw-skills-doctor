@@ -18,6 +18,22 @@
     "plugin": {
       "id": "openclaw-skills-doctor",
       "label": "OpenClaw Skills Doctor"
+    },
+    "compat": {
+      "pluginApi": ">=2026.10.9",
+      "minGatewayVersion": "2026.10.9"
+    },
+    "build": {
+      "openclawVersion": "2026.10.9",
+      "pluginSdkVersion": "2026.10.9"
+    }
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.10.9"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
     }
   },
   "files": [

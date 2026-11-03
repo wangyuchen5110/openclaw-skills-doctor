@@ -33,6 +33,9 @@ if (pkg) {
   if (pkg.openclaw?.plugin?.id && manifest?.id && pkg.openclaw.plugin.id !== manifest.id) {
     problems.push(`package.json: openclaw.plugin.id (${pkg.openclaw.plugin.id}) != manifest id (${manifest.id})`)
   }
+  // Required by ClawHub for code plugin packages.
+  if (!pkg.openclaw?.compat?.pluginApi) problems.push("package.json: openclaw.compat.pluginApi is required for ClawHub publishing")
+  if (!pkg.openclaw?.build?.openclawVersion) problems.push("package.json: openclaw.build.openclawVersion is required for ClawHub publishing")
 }
 
 if (manifest) {
