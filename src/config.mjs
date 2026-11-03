@@ -120,26 +120,46 @@ export function loadConfig({ stateDir, home, env } = {}) {
   }
 }
 
+/** Existing permission bits, or null when the file does not exist yet. */
+function existingMode(file) {
+  try {
+    return fs.statSync(file).mode & 0o777
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Write atomically and keep the file's permissions: `openclaw.json` can hold
+ * credentials (0600), and a plain rewrite would inherit the umask (0644).
+ */
 function atomicWrite(file, text) {
+  const previousMode = existingMode(file)
   const tmp = `${file}.skills-doctor-${process.pid}.tmp`
   fs.mkdirSync(path.dirname(file), { recursive: true })
-  fs.writeFileSync(tmp, text, "utf8")
+  fs.writeFileSync(tmp, text, { encoding: "utf8", mode: 0o600 })
   try {
     fs.renameSync(tmp, file)
   } catch {
-    fs.writeFileSync(file, text, "utf8")
+    fs.writeFileSync(file, text, { encoding: "utf8", mode: 0o600 })
     try {
       fs.rmSync(tmp, { force: true })
     } catch {}
   }
+  try {
+    fs.chmodSync(file, previousMode ?? 0o600)
+  } catch {}
 }
 
-/** Back up the current file next to itself; returns the backup path. */
+/** Back up the current file next to itself, keeping its permissions; returns the backup path. */
 export function backupConfig(file, now = new Date()) {
   if (!fs.existsSync(file)) return null
   const stamp = now.toISOString().replace(/[:.]/g, "-")
   const backup = `${file}.bak-${stamp}`
   fs.copyFileSync(file, backup)
+  try {
+    fs.chmodSync(backup, existingMode(file) ?? 0o600)
+  } catch {}
   return backup
 }
 

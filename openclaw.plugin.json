@@ -3,7 +3,7 @@
   "name": "OpenClaw Skills Doctor",
   "description": "Audit the skills OpenClaw loads: per-step token cost, shadowed duplicates and broken references.",
   "categories": ["developer-tools"],
-  "version": "0.3.3",
+  "version": "0.3.4",
   "contracts": {
     "tools": ["skills_doctor"]
   },

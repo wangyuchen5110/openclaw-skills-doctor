@@ -1,3 +1,10 @@
+## 0.3.4
+
+- Preserve `openclaw.json` permissions when rewriting it and on the `.bak-*`
+  copy. The file can hold credentials and is normally `0600`, but a fresh write
+  inherited the umask (`0644`). New config files are created `0600`.
+- Tests: 29 (the POSIX permission test is skipped on Windows).
+
 ## 0.3.3
 
 Security hardening after the ClawHub scan:

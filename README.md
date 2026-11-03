@@ -263,7 +263,8 @@ explicit `@id` reference while removing it from the model-facing list.
 
 - **Local-only:** no telemetry, no backend, nothing leaves the machine; the only optional network call is the core CLI's daily npm version check, which you can disable.
 - `check`, `plan`, `scan` and `doctor` are read-only and offline (no network, no LLM).
-- `install`/`uninstall` back up `openclaw.json` before rewriting it and never
+- `install`/`uninstall` back up `openclaw.json` before rewriting it, preserve
+  its existing permission bits (credentials files are usually `0600`), and never
   spawn a child process.
 - `uninstall` only removes a bundled skill when its `SKILL.md` was read
   successfully **and** still declares `name: openclaw-skills-doctor`; otherwise

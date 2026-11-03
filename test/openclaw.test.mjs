@@ -430,3 +430,24 @@ test("uninstall --plugin: 同时移除 MCP 条目与 plugin 开关", () => {
   assert.equal(getMcpServer(loadConfig({ stateDir }).data, MCP_SERVER_NAME), null)
   assert.equal(getPluginEntry(loadConfig({ stateDir }).data, PLUGIN_ID), null)
 })
+
+test("config: 重写 openclaw.json 时保留 0600 权限（凭据文件）", { skip: process.platform === "win32" }, () => {
+  const { stateDir } = sandbox()
+  fs.mkdirSync(stateDir, { recursive: true })
+  const file = configFile({ stateDir })
+  fs.writeFileSync(file, "{}")
+  fs.chmodSync(file, 0o600)
+
+  const backup = saveConfig({ file, data: { mcp: { servers: {} } } })
+  assert.equal(fs.statSync(file).mode & 0o777, 0o600)
+  if (backup) assert.equal(fs.statSync(backup).mode & 0o777, 0o600)
+})
+
+test("doctor --json 不回显已保存的 MCP 值", () => {
+  const { home, stateDir, workspace } = sandbox()
+  installOpenClaw({ home, env: {}, stateDir, workspace })
+  const facts = inspectOpenClaw({ home, env: {}, stateDir, workspace })
+  assert.equal(facts.mcpConfigured, true)
+  assert.equal("mcpEntry" in facts, false)
+  assert.equal(JSON.stringify(facts).includes("opencode-skills-doctor"), false)
+})
